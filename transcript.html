@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Human Haploid Cell Gene Expressions</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.10.24/datatables.min.css"/>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.5.0/css/all.css">
+  <style>
+        .bd-placeholder-img {
+            font-size: 1.125rem;
+            text-anchor: middle;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+
+        @media (min-width: 768px) {
+            .bd-placeholder-img-lg {font-size: 3.5rem;}
+        }
+
+        .utr5 {color: blue}
+        .start_codon {color: white; background: green}
+        .cds {color: black}
+        .stop_codon {color: white; background: red}
+        .utr3 {color: orange}
+        .sequence {
+            background: #fff;
+            border: 1px solid lightgray;
+            border-radius: 10px;
+        }
+        .sequence p {
+            display: inline-table;
+            word-break: break-all;
+            white-space: normal;
+            font-family: monospace;
+            font-size: 15px;
+            padding: 5px 10px;
+            letter-spacing: 1.5px;
+        }
+        table {font-size: 14pt}
+        td {
+            font-family: "Droid Serif";
+            text-align: center;
+        }
+        .btn-sm {padding: 0 0.25rem;}
+        .maximum {color: green}
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container">
+  <main>
+    <div class="py-5 text-center">
+      <img class="d-block mx-auto mb-4"
+           src="https://content.geneticliteracyproject.org/wp-content/uploads/elementor/thumbs/genes-5-30-18-nqymrrkf2xkl40gh4kkpgs710qys5i24z1y8jhwpr2.jpg"
+           alt="" width="250" height="250">
+      <h1 class="py-3">Human Gene Expresions in Haploid Cell Lines</h1>
+      <p class="lead">Search a gene to explore its expressions in different haploid cell lines and view the sequence of its transcript.</p>
+    </div>
+    <h4 class="pb-2">{{table_title}}</h4>
+    <div class="pb-5">
+      {{!table}}
+    </div>
+
+    <div class="py-2 text-left sequence">
+      <p>
+        {{!sequence_header}}
+      </p>
+      <p>
+        {{!sequence}}
+      </p>
+    </div>
+  </main>
+
+  <footer class="my-5 pt-5 text-muted text-center text-small">
+    <p class="mb-1">&copy; 2021 Van Nostrand Lab</p>
+  </footer>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.24/datatables.min.js"></script>
+<!--<script>-->
+<!--    $(document).ready( function () {-->
+<!--    $('#expression_table').DataTable({-->
+<!--        "scrollY":        "600px",-->
+<!--        "scrollCollapse": false,-->
+<!--        "paging":         false-->
+<!--    });-->
+<!--    });-->
+<!--    </script>-->
+</body>
+</html>
