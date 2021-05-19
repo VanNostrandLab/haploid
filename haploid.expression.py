@@ -1,44 +1,121 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import pandas as pd
 from bottle import route, run, template
 import requests
-    
-    
-ge = pd.read_csv('RBP_gene_expression.csv')
-ge['Gene'] = ge.apply(lambda row: f'<a href="/gene/{row.Gene}"">{row.Gene}</a>', axis=1)
+from loguru import logger
 
-te = pd.read_csv('transcript.expression.csv')
-te = te.rename(columns={'Gene_ID': 'Gene ID', 'Transcript_ID': 'Transcript ID'})
+logger.remove()
+logger.add(sys.stderr, level="DEBUG", format="<light-green>[{time:HH:mm:ss}]</light-green> <level>{message}</level>")
 
-dc = pd.read_csv('RBP_transcript_expression.csv')
-dc = dc.rename(columns={'Gene_ID': 'Gene ID', 'Transcript_ID': 'Transcript ID'})
+cell_lines = ['A11.C636', 'A11', 'E9', 'HAP1.C597', 'KBM7']
+rbp_columns = {'gene name': 'Gene', 'description': 'Description', 'gene id': 'ENSG',
+               'protein id': 'ENSP', 'number of domains': 'Number of domains',
+               'domains[count]': 'Domains count', 'paralogous family ID': 'Paralogous family ID',
+               'members of paralogous family ': 'Members of paralogus family',
+               'representative family member': 'Representative family member',
+               'paralog [ % identity representative member:paralog , % identity paralog: representative member]': 'Paralog',
+               'consensus RNA target': 'Consensus RNA target',
+               'putative RNA target': 'Putative RNA target',
+               'supporting evidence (# pubmed ID)': 'PubMed ID',
+               'category in Baltz et al.': 'Category in Baltz et al.',
+               'category in Castello et al.': 'Category in Castello et al.',
+               'found in both human mass spec': 'Found in both human mass spec',
+               'human cell lines mass spec': 'Human cell lines mass spec',
+               'category in Kwon et al. mouse mESC': 'Category in Kwon et al. mouse mESC',
+               'Toronto RBPDB': 'Toronto RBPDB',
+               'GO RNA related category': 'GO RNA related category',
+               'GO RNA related category description': 'GO RNA related category description',
+               'GO general category': 'GO general category',
+               'GO general category description': 'GO general category description',
+               'OMIM': 'OMIM'}
 
 
-def get_content(file):
-    with open(file) as f:
-        return f.read().strip()
-    
-    
-def get_gene_expressions(n=0):
-    de = ge.head(n) if n else ge
-    text = de.to_html(classes="table table-striped table-bordered", table_id="expression_table",
-                      index=False, escape=False, justify='center')
-    return text
+def rbps():
+    rbp = pd.read_csv('RBP.list.tsv', sep='\t')
+    rbp = rbp.rename(columns=rbp_columns)
+    rbp[['Description', 'HGNC']] = rbp['Description'].str.split('\ \[Source:HGNC Symbol;Acc:', expand=True)
+    rbp['Description'] = rbp['Description'].str.replace('\ \[Source:.*', '', regex=True)
+    rbp['HGNC'] = rbp['HGNC'].str.rstrip(']')
+    return rbp
 
 
-def get_table(dx):
-    dx = dx.drop(columns=['Gene ID', 'Gene'])
-    dx['Transcript ID'] = [f'<a href="/transcript/{t}">{t}</a>' for t in dx['Transcript ID']]
-    if dx.shape[0] > 1:
-        for column in dx.columns:
-            maximum = dx[column].max()
-            dx[column] = dx[column].replace(maximum, f'<span class="maximum">{maximum}</span>')
-    table = dx.to_html(classes="table table-striped table-bordered", table_id="expression_table",
-                       index=False, justify='center', escape=False)
-    return table
+def expressions():
+    df = pd.read_csv('haploid.cell.line.expression.csv')
+    df = df.rename(columns={'gene': 'Gene', 'chrom': 'Chrom', 'start': 'Start', 'end': 'End'})
+    return df
+
+
+def rbp_expressions():
+    rbp, dd = rbps(), expressions()
+    df = pd.merge(rbp, dd, on='Gene')
+    return df
+
+
+def rbp_gene_expressions():
+    csv = 'haploid.rbp.gene.expressions.csv'
+    if os.path.isfile(csv):
+        dd = pd.read_csv(csv)
+        logger.info(f'Haploid RBP expressions already exist, loading data ...')
+    else:
+        df, dd = rbp_expressions(), pd.DataFrame()
+        for cell_line in cell_lines:
+            logger.info(f'Processing cell line {cell_line}')
+            dx = df[['Gene', 'Transcript ID', 'Description', cell_line]]
+            dx = dx.sort_values(by=['Gene', 'Transcript ID', cell_line], ascending=[True, True, False])
+            dx = dx.drop_duplicates(subset=['Gene'])
+            dx = dx.drop(columns=['Transcript ID'])
+            dd = dx if dd.empty else pd.merge(dd, dx, on=['Gene', 'Description'], how='outer')
+        logger.info(f'Saving results ...')
+        dd = dd.drop_duplicates()
+        dd = dd.fillna(0.0)
+        dd.to_csv(csv, index=False, float_format='%.2f')
+    return dd
+
+
+def rbp_transcript_expressions():
+    csv = 'haploid.rbp.transcript.expression.csv'
+    if os.path.isfile(csv):
+        logger.info(f'File {csv} already exists, loading data ...')
+        dd = pd.read_csv(csv)
+    else:
+        rbp, df = rbps(), expressions()
+        dd = pd.merge(rbp, df, on=['Gene'])
+        dd.to_csv(csv, index=False, float_format='%.2f')
+    return dd
+
+
+def get_transcript(gene='', transcript=''):
+    df = rbp_transcript_expressions()
+    gt = df[df['Gene'] == gene].copy() if gene else df[df['Transcript ID'] == transcript].copy()
+    gene, transcript = gt.iloc[0][['Gene', 'Transcript ID']]
+    table = gt[['Transcript ID'] + cell_lines].copy()
+    table['Transcript ID'] = [f'<a href="/transcript/{t}">{t}</a>' for t in table['Transcript ID']]
+    table = table.to_html(index=False, escape=False, classes="table table-striped table-bordered",
+                          table_id="transcript_table", justify='center')
+
+    summary = gt.drop_duplicates(subset=['Gene']).copy()
+    summary['Coordinate'] = [ucsc_url(row.Chrom, row.Start, row.End) for row in summary.itertuples()]
+    columns = ['Gene', 'Description', 'Coordinate', 'Domains count', 'Paralogous family ID',
+               'Members of paralogus family', 'Representative family member', 'Paralog', 'Consensus RNA target',
+               'Putative RNA target', 'PubMed ID', 'GO RNA related category', 'GO RNA related category description',
+               'GO general category', 'GO general category description', 'OMIM']
+    summary_title = f'{gene} ({summary.iloc[0]["ENSG"]})'
+    summary = summary[columns]
+    summary = summary.set_index('Gene').transpose()
+    summary['Gene'] = summary.index
+    summary = summary[['Gene', gene]]
+    summary = summary.to_html(escape=False, header=False, classes="table table-striped table-bordered",
+                              table_id="gene_description", index=False)
+    summary = summary.replace('<tbody>', """  <colgroup>
+        <col style="width:30%; text-align:right">
+        <col style="width:70%; text-align:left">
+        </colgroup>
+        <tbody>""")
+    return gene, transcript, gt, table, summary_title, summary
 
 
 def get_sequence(chrom, start, end, strand, utr5start, utr5end, utr3start, utr3end):
@@ -72,40 +149,39 @@ def get_sequence(chrom, start, end, strand, utr5start, utr5end, utr3start, utr3e
     return sequence, a
 
 
-def get_transcript_info(gene='', transcript=''):
-    dg = te[te['Gene'] == gene].copy() if gene else te[te['Transcript ID'] == transcript].copy()
-    if gene:
-        transcript = dg.iloc[0]['Transcript ID']
-    table = get_table(dg)
-    row = dc[dc['Transcript ID'] == transcript].iloc[0]
-    gene, gid,  = row['Gene'], row['Gene ID']
-    title = f'{gid} ({gene})'
-    sequence, a = get_sequence(row['Chrom'], row['Start'], row['End'], row['strand'],
-                               row['utr5_start'], row['utr5_end'], row['utr3_start'], row['utr3_end'])
-    sequence_header = f'{gid}|{transcript}|{gene} {a}'
-    summary = row.to_frame()
-    summary = summary.to_html(index=False)
-    return {'table_title': title, 'table': table, 'summary': summary,
-            'sequence_header': sequence_header, 'sequence': sequence}
-
-
 @route('/')
-@route('/<number>')
 def home(number=0):
-    table = get_gene_expressions(n=int(number))
+    df = rbp_gene_expressions()
+    df['Gene'] = [f'<a href="/gene/{gene}">{gene}</a>' for gene in df['Gene']]
+    table = df.to_html(index=False, classes="table table-striped table-bordered", table_id="gene_expression",
+                       justify='center', escape=False)
     return template('index.html', table=table)
 
 
 @route('/gene/<gene>')
-def gene_expression(gene):
-    data = get_transcript_info(gene=gene)
-    return template('transcript.html', **data)
+def gene_transcript(gene):
+    _, _, _, table, summary_title, summary = get_transcript(gene=gene)
+    return template('transcript.html', table=table, summary_title=summary_title, summary=summary,
+                    table_title='', sequence_header='', sequence='')
 
 
 @route('/transcript/<transcript>')
 def transcript_expression(transcript):
-    data = get_transcript_info(transcript=transcript)
-    return template('transcript.html', **data)
+    gene, _, gt, table, summary_title, summary = get_transcript(transcript=transcript)
+    t = gt[gt['Transcript ID'] == transcript].iloc[0]
+    sequence, a = get_sequence(t.Chrom, t.Start, t.End, t.strand, t.utr5_start, t.utr5_end, t.utr3_start, t.utr3_end)
+    sequence_header = f'> {transcript} ({gene}|{t.ENSG}) {a}'
+    return template('transcript.html', table=table, summary_title=summary_title, summary=summary,
+                    sequence_header=sequence_header, sequence=sequence)
+
+
+def ucsc_url(chrom, start, end, strand=''):
+    s = f'{chrom}:{start}-{end}'
+    if strand:
+        s = f'{s}:{strand}'
+    url = (f'<a href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=hg19&position={chrom}%3A{start}%2D{end}" '
+           f'target="_blank">{s}</a>')
+    return url
 
 
 if __name__ == '__main__':

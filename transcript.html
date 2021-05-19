@@ -40,11 +40,9 @@
             padding: 5px 10px;
             letter-spacing: 1.5px;
         }
-        table {font-size: 14pt}
-        td {
-            font-family: "Droid Serif";
-            text-align: center;
-        }
+        table {font-family: "Droid Serif"; font-size: 14pt; }
+        #gene_description {table-layout: fixed; width: 100%; word-break: break-all;}
+        #transcript_table {text-align: center;}
         .btn-sm {padding: 0 0.25rem;}
         .maximum {color: green}
     </style>
@@ -56,14 +54,15 @@
     <div class="py-5 text-center">
       <img class="d-block mx-auto mb-4"
            src="https://content.geneticliteracyproject.org/wp-content/uploads/elementor/thumbs/genes-5-30-18-nqymrrkf2xkl40gh4kkpgs710qys5i24z1y8jhwpr2.jpg"
-           alt="" width="250" height="250">
+           alt="" width="200" height="200">
       <h1 class="py-3">Human Gene Expresions in Haploid Cell Lines</h1>
       <p class="lead">Search a gene to explore its expressions in different haploid cell lines and view the sequence of its transcript.</p>
     </div>
-    <h4 class="pb-2">{{table_title}}</h4>
+    <h4 class="pb-2">{{summary_title}}</h4>
     <div class="pb-5">
       {{!summary}}
     </div>
+    <h4 class="pb-2">Transcript table</h4>
     <div class="pb-5">
       {{!table}}
     </div>
@@ -85,14 +84,14 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.js" integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk=" crossorigin="anonymous"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.24/datatables.min.js"></script>
-<!--<script>-->
-<!--    $(document).ready( function () {-->
-<!--    $('#expression_table').DataTable({-->
-<!--        "scrollY":        "600px",-->
-<!--        "scrollCollapse": false,-->
-<!--        "paging":         false-->
-<!--    });-->
-<!--    });-->
-<!--    </script>-->
+<script>
+    $(document).ready( function () {
+    $('#transcript_table').DataTable({
+        "paging":         false,
+        "searching": false,
+        "bInfo": false
+    });
+    });
+    </script>
 </body>
 </html>
