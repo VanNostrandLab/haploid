@@ -7,13 +7,13 @@ from bottle import route, run, template
 import requests
     
     
-ge = pd.read_csv('gene.expression.csv')
+ge = pd.read_csv('RBP_gene_expression.csv')
 ge['Gene'] = ge.apply(lambda row: f'<a href="/gene/{row.Gene}"">{row.Gene}</a>', axis=1)
 
 te = pd.read_csv('transcript.expression.csv')
 te = te.rename(columns={'Gene_ID': 'Gene ID', 'Transcript_ID': 'Transcript ID'})
 
-dc = pd.read_csv('transcript.coordinates.csv')
+dc = pd.read_csv('RBP_transcript_expression.csv')
 dc = dc.rename(columns={'Gene_ID': 'Gene ID', 'Transcript_ID': 'Transcript ID'})
 
 
@@ -83,7 +83,9 @@ def get_transcript_info(gene='', transcript=''):
     sequence, a = get_sequence(row['Chrom'], row['Start'], row['End'], row['strand'],
                                row['utr5_start'], row['utr5_end'], row['utr3_start'], row['utr3_end'])
     sequence_header = f'{gid}|{transcript}|{gene} {a}'
-    return {'table_title': title, 'table': table,
+    summary = row.to_frame()
+    summary = summary.to_html(index=False)
+    return {'table_title': title, 'table': table, 'summary': summary,
             'sequence_header': sequence_header, 'sequence': sequence}
 
 

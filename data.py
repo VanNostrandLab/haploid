@@ -85,6 +85,7 @@ def intersect_rbp():
                'OMIM': 'OMIM'}
     rbp = rbp.rename(columns=columns)
     rbp[['Description', 'HGNC']] = rbp['Description'].str.split('\ \[Source:HGNC Symbol;Acc:', expand=True)
+    rbp['Description'] = rbp['Description'].str.replace('\ \[Source:.*', '')
     rbp['HGNC'] = rbp['HGNC'].str.rstrip(']')
     print(rbp.head())
     print(list(rbp.columns))
@@ -93,7 +94,7 @@ def intersect_rbp():
         logger.info(f'File {rbp_gene_expression} already exists, loading data ...')
         dg = pd.read_csv(rbp_gene_expression)
     else:
-        dg = pd.merge(rbp[['Gene', 'Description', 'HGNC']], ge, on='Gene')
+        dg = pd.merge(rbp[['Gene', 'Description']], ge, on='Gene')
         dg.to_csv(rbp_gene_expression, index=False)
     if os.path.isfile(rbp_transcript_expression):
         logger.info(f'File {rbp_transcript_expression} already exists, loading data ...')
